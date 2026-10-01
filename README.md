@@ -58,42 +58,32 @@ FitFindr helps users find secondhand clothes and build outfits. You give it a na
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Filters the listings data by text keywords, size, and a maximum price.
+- **Inputs:** `description` (str), `size` (str or None), `max_price` (float or None)
+- **Returns:** A list of matching listing dicts, best match first, capped at config.SEARCH_RESULT_LIMIT. Each dict contains id, title, description, category, style_tags, size, condition, price, colors, brand, platform.
+- **When it has nothing:**  Returns an empty list `[]`. Never None, never an exception.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Generates one or two outfit suggestions combining the new item with the user's wardrobe.
+- **Inputs:** `new_item` (dict), `wardrobe` (dict, with an 'items' key that may be empty)
+- **Returns:** A non-empty string (`str`) with outfit suggestions.
+- **When it has nothing:** (Empty wardrobe) Returns general styling advice string, never raises an exception.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Creates a short social-media caption for the thrifted item.
+- **Inputs:** `outfit` (str), `new_item` (dict)
+- **Returns:** A two-to-four sentence caption string (`str`).
+- **When it has nothing:** (Empty `outfit` input) Returns a descriptive message string, never raises an exception.
 
 ---
 
 ## Planning Loop
 
-<!-- Your branch rule, stated as a rule — the condition AND both paths — plus
-     the file and function that holds it.
 
-     Like this:
-       "If search_listings returns an empty list, put a message in the session
-        and stop. Otherwise take the first result and go to suggest_outfit."
-        — agent.py::run_agent
-
-     The grader checks your code against what you claim here, so the file and
-     function have to be real. -->
-
-**Branch rule:**
-
+**Branch rule:** If `search_listings` returns an empty list, put a message in the session and stop. Otherwise, take the first result and go to `suggest_outfit`.
+ 
 **Where it lives:** `agent.py::run_agent`
 
 **How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
