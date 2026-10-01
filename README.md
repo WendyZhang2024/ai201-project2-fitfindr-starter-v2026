@@ -39,8 +39,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
-
+FitFindr helps users find secondhand clothes and build outfits. You give it a natural language query. It searches the listings, picks one, combines it with your wardrobe to suggest a full outfit, and writes a fit card you could post. If nothing matches, it stops cleanly and reports that.
 
 
 ---
