@@ -25,7 +25,7 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-I picked 4 of 5 because `suggest_outfit` and `create_fit_card` are two serial LLM calls, and the loop has no retry logic. If either one returns malformed output (for example, a fit card with no text), the run fails with nothing to recover it. One miss in 5 leaves room for that. I did not pick 5 of 5 because two chained non-deterministic calls multiply the failure chance, and I did not pick 3 of 5 because the search step is fixed by the pre-selected queries, so it should not be a source of failure.
+I picked 4 of 5 because `suggest_outfit` and `create_fit_card` are two serial LLM calls, and `agent.py` has no retry around them. The adapter retries failed requests (`MAX_RETRIES` in `config.py`), but it cannot fix a response that arrives fine and is malformed (for example, a fit card with no text), so the run fails with nothing to recover it. One miss in 5 leaves room for that. I did not pick 5 of 5 because two chained non-deterministic calls multiply the failure chance, and I did not pick 3 of 5 because the search step is fixed by the pre-selected queries, so it should not be a source of failure.
 
 ---
 
@@ -38,17 +38,18 @@ Given a query that matches no listings, the agent stops before calling
 I picked 5 of 5 because this path is deterministic code (an `if not search_results:` branch in `agent.py`), not a model call. An empty list from `search_listings` must always stop the loop. Any miss means a bug in my loop, so there is no tolerance. I use 5 different queries so that one hard-coded case cannot pass all 5 runs.
 ---
 
-## 3. Something about state
+## 3. State: each run keeps its own selected item
 
-Run two different queries in the same session. After the second run, `session["selected_item"]["id"]` equals the id of the first result of the second search, and does not equal the id from the first query — 5 of 5 pairs of queries.
+Run two different queries back to back with `run_agent`. In each returned session, `session["selected_item"]["id"]` equals the id of the first result of that run's own `search_results`, and the two runs' ids differ — 5 of 5 pairs of queries.
 
 
 **Why this target:**
-I picked 5 of 5 because the selection is a deterministic in-memory assignment, with no model call or network step. If the id is stale, the loop failed to overwrite or reset `selected_item`, which is a code bug. Carrying state across turns is the easiest thing to forget in a loop, so a failure here would be a real defect and not noise. I use 5 pairs with different top results so the two ids always differ.
+I picked 5 of 5 because the selection is a deterministic in-memory assignment (`session["selected_item"] = results[0]` in `agent.py`), with no model call or network step. A miss would mean the loop reads the wrong list or shares state between runs, for example through a module-level variable, which is a code bug and not noise. I use 5 pairs with different top results so the two ids always differ.
 
 ---
 
-## 4. Something about the fit card
+## 4. The fit card keeps the facts and is not a copy
+
 Given a valid item and outfit, run `create_fit_card` 5 times. At least 4 of the 5 outputs contain both the item's price digits (for example "24") and the platform name, and no two of the 5 outputs are word-for-word identical.
 
 
@@ -58,7 +59,7 @@ I picked 4 of 5 because price and platform go into the prompt as fixed fields, b
 
 ---
 
-## 5. Your choice
+## 5. An empty wardrobe still gets styling advice
 
 Given a user with an empty wardrobe, `suggest_outfit` raises no exception and returns a string of at least 50 characters that contains none of "please add", "no items", or "error" — in at least 4 of 5 tries.
 
