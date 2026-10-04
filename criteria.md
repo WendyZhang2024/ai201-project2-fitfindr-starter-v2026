@@ -36,6 +36,7 @@ Given a query that matches no listings, the agent stops before calling
 
 **Why this target:**
 I picked 5 of 5 because this path is deterministic code (an `if not search_results:` branch in `agent.py`), not a model call. An empty list from `search_listings` must always stop the loop. Any miss means a bug in my loop, so there is no tolerance. I use 5 different queries so that one hard-coded case cannot pass all 5 runs.
+
 ---
 
 ## 3. State: each run keeps its own selected item
