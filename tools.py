@@ -210,3 +210,38 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     prompt = f"Write a 2-4 sentence social media caption for this secondhand item.\n\nItem details:\n- Title: {new_item['title']}\n- Price: ${new_item['price']}\n- Platform: {new_item['platform']}\n- Tags: {', '.join(new_item['style_tags'])}\n\nOutfit suggestion:\n{outfit}\n\nRequirements: Write it like a real outfit share, and you must mention the price ({new_item['price']}) and platform ({new_item['platform']}) once each."
 
     return generate(prompt)
+
+# ── Tool 4: compare_prices ── 
+ 
+def compare_prices(item: dict, limit: int = 3) -> list[dict]:
+    """
+    Find cheaper listings that could stand in for `item`.
+ 
+    A listing counts when it is in the same category, shares at least one
+    style tag with `item`, and costs less. Does not call the model.
+ 
+    Args:
+        item:  a listing dict (the selected item).
+        limit: the most alternatives to return.
+ 
+    Returns:
+        A list of listing dicts, cheapest first, at most `limit` long.
+        Returns [] when nothing cheaper is similar — an empty list, not None.
+    """
+    tags = set(item.get("style_tags") or [])
+    price = float(item["price"])
+ 
+    matches = []
+    for other in load_listings():
+        if other["id"] == item["id"]:
+            continue
+        if other.get("category") != item.get("category"):
+            continue
+        if float(other["price"]) >= price:
+            continue
+        if not tags & set(other.get("style_tags") or []):
+            continue
+        matches.append(other)
+ 
+    matches.sort(key=lambda x: float(x["price"]))
+    return matches[:limit]

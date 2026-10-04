@@ -155,7 +155,7 @@ Nothing beats the timeless fit of these vintage Levi's 501s—just pair them wit
 
 ## How I Used AI
 
-<
+
 
 **Moment 1**
 
@@ -169,13 +169,64 @@ Nothing beats the timeless fit of these vintage Levi's 501s—just pair them wit
 - *What came back:* It found a missing `import re`, and that `.upper` in `_size_tokens` was missing its parentheses, so every search with a size filter would return `[]`.
 - *What I changed:* I added `import re` and changed it to `.upper()`. I then ran the three terminal tests, and the size filter returned the right items (`size='M'` gave only the `S/M` listings).
 
-## Stretch Features Declared
+## Stretch Features
 
-I am building these three stretch features for Unit 3, declared before building them:
+During the build I changed the design of two of the features. The final versions are what is described and demonstrated here (`compare_prices` is unchanged).
 
-1. **A fourth tool (`compare_prices`)** — `tools.py::compare_prices(item, limit=3)`. After an item is selected, it finds cheaper listings in the same category that share at least one style tag with the item. Returns a list of listing dicts, cheapest first, at most `limit` long, or `[]` when nothing cheaper is similar. It does not call the model. The loop stores the result in `session["alternatives"]`.
-2. **A second branch (budget fallback)** — in `agent.py::run_agent`. Condition: `search_listings` returns an empty list **and** the query set a `max_price`. The loop retries the search once without the price ceiling. If that returns listings, it continues to `suggest_outfit` and adds a note to `session["notes"]` that nothing was found within budget. If it is still empty, it takes the original stop branch.
-3. **Style memory (`user_memory.json`)** — `memory.py` saves the style tags of each selected item (the 10 most recent, no duplicates) to `user_memory.json` after a run finishes. On the next run, `run_agent` loads them and passes them to `suggest_outfit`, which adds them to its prompt so the outfit is shaped by what the user previously selected.
+### 1. A fourth tool: `compare_prices`
+- **Where:** `tools.py::compare_prices(item, limit=3)`, called from `agent.py::run_agent` and stored in `session["alternatives"]`.
+- **Returns:** a list of listing dicts in the same category that share at least one style tag with the item and cost less, cheapest first, at most `limit` long. `[]` when nothing cheaper is similar. It does not call the model.
+- **What it changed:** after an item is selected, the run now also reports cheaper alternatives.
+- **Run where the agent called it** (`python agent.py`):
+
+```
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] compare_prices
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: 3 items: Mesh Long-Sleeve Top — Black, Henley Long Sleeve — Washed Burgundy, Tie-Dye Long Sleeve — Pastel
+      →    3 cheaper alternative(s)
+```
+
+### 2. A second branch: relax the size
+- **Design change:** I first planned a budget fallback, but `search_listings` already filters by `max_price`, so results can never exceed it. I used the size filter instead.
+- **Condition:** `search_listings` returns an empty list **and** the query set a size. **Path:** the loop retries once without the size. If that finds listings it continues, with a note in `session["notes"]`. If it is still empty it takes the original stop branch.
+- **Where:** `agent.py::run_agent`.
+- **What it changed:** a size that rules everything out no longer ends the run. The empty-search stop still happens when relaxing doesn't help (the `designer ballgown size XXS under $5` run).
+- **Run where the branch was taken** (`graphic tee size XXS`):
+
+```
+[12] search_listings (via MCP)
+      out: [] (empty)
+      →    0 match(es)
+[13] branch
+      out: 6 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Mesh Long-Sleeve Top — Black … +3 more
+      →    search empty with size XXS: retried without size, 6 match(es)
+[14] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+  note:     Nothing was listed in size XXS, so these results are in other sizes.
+```
+
+### 3. Style memory
+- **Design change:** instead of saving style tags, the agent saves the wardrobe, so the next outfit can name the actual piece.
+- **How:** `run_agent(..., remember_item=True)` saves the selected item to `saved_wardrobe.json` as something the user now owns. A later run given an empty wardrobe uses the saved one instead. Code is in `memory.py` and `agent.py::run_agent`.
+- **What it changed:** with an empty wardrobe the outfit used to be generic advice; now it can use pieces from earlier runs. Calling `suggest_outfit` directly is unchanged.
+- **Two runs where the second is shaped by the first** (`python memory_demo.py`):
+
+```
+=== Run 1: empty wardrobe, and the user keeps the item ===
+[5] suggest_outfit
+      →    0 wardrobe item(s)
+[7] style memory
+      →    selected item saved for the next run
+
+=== Run 2: empty wardrobe again, but the memory now has an item ===
+[8] style memory
+      →    empty wardrobe replaced by 1 saved item(s)
+[13] suggest_outfit
+      →    1 wardrobe item(s)
+  outfit:   Here is a specific outfit combination using your new corduroy wide-legged pants and your Y2K butterfly baby tee: ...
+```
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
