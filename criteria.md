@@ -25,9 +25,7 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-<!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
-     "my search is a plain keyword match and some phrasings will miss" is a
-     real answer. -->
+I picked 4 of 5 because `suggest_outfit` and `create_fit_card` are two serial LLM calls, and the loop has no retry logic. If either one returns malformed output (for example, a fit card with no text), the run fails with nothing to recover it. One miss in 5 leaves room for that. I did not pick 5 of 5 because two chained non-deterministic calls multiply the failure chance, and I did not pick 3 of 5 because the search step is fixed by the pre-selected queries, so it should not be a source of failure.
 
 ---
 
@@ -37,66 +35,37 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
-     about this path? -->
-
+I picked 5 of 5 because this path is deterministic code (an `if not search_results:` branch in `agent.py`), not a model call. An empty list from `search_listings` must always stop the loop. Any miss means a bug in my loop, so there is no tolerance. I use 5 different queries so that one hard-coded case cannot pass all 5 runs.
 ---
 
 ## 3. Something about state
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know that the item your search found is the same item the
-     next tool received? Name something countable or observable.
-
-     This is the criterion people find hardest, because state failure doesn't
-     look like state failure — it looks like a tool problem. Something that
-     compares session["selected_item"] against what actually reached
-     suggest_outfit is the shape you're after. -->
-
+Run two different queries in the same session. After the second run, `session["selected_item"]["id"]` equals the id of the first result of the second search, and does not equal the id from the first query — 5 of 5 pairs of queries.
 
 
 **Why this target:**
-
-
+I picked 5 of 5 because the selection is a deterministic in-memory assignment, with no model call or network step. If the id is stale, the loop failed to overwrite or reset `selected_item`, which is a code bug. Carrying state across turns is the easiest thing to forget in a loop, so a failure here would be a real defect and not noise. I use 5 pairs with different top results so the two ids always differ.
 
 ---
 
 ## 4. Something about the fit card
-
-<!-- YOU WRITE THIS ONE.
-
-     The fit card calls a model, so the same input can produce different words
-     each time. That's not a bug — it's the nature of the tool. So what would
-     make it acceptable?
-
-     Think about what you'd actually be unhappy to see. A caption that never
-     mentions the price? Two different items producing the same opening
-     sentence? A card longer than a caption anyone would post? Any of those can
-     be turned into a number. -->
-
+Given a valid item and outfit, run `create_fit_card` 5 times. At least 4 of the 5 outputs contain both the item's price digits (for example "24") and the platform name, and no two of the 5 outputs are word-for-word identical.
 
 
 **Why this target:**
-
+I picked 4 of 5 because price and platform go into the prompt as fixed fields, but the caption is written by the LLM. The model may drop the platform, or return a refusal such as "I cannot generate a card". The price match checks for the digits only, so "$24" and "about $24" both pass. I did not pick 5 of 5 because the facts are not inserted by code but depend on the model copying them. The "not identical" check is a separate, easy condition. With temperature above 0 it should always pass, and it would only fail if the output were cached or the temperature were 0.
 
 
 ---
 
 ## 5. Your choice
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. Speed, the empty
-     wardrobe path, what happens when the model can't be reached, whether the
-     search respects a price ceiling — anything, as long as it names a number
-     or an observable outcome. -->
+Given a user with an empty wardrobe, `suggest_outfit` raises no exception and returns a string of at least 50 characters that contains none of "please add", "no items", or "error" — in at least 4 of 5 tries.
 
 
 
 **Why this target:**
-
-
+I picked 4 of 5 because an empty wardrobe list goes into the prompt and the LLM decides what to write. The main failure I expect is a refusal such as "Please add clothes to your wardrobe first", which the keyword check catches. This is model behavior, not a code branch, so I do not require 5 of 5. I did not pick 3 of 5 because I explicitly tell the prompt to give general advice, so refusals should be rare.
 
 ---
 
