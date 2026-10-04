@@ -33,15 +33,6 @@ FitFindr helps users find secondhand clothes and build outfits. You give it a na
 
 ## Tool Inventory
 
-<!-- Four lines per tool. This is worth 2 points and it's the single most
-     common place students lose them.
-
-     "Returns a list" earns NOTHING. The description has to say what is IN
-     the list.
-
-     The empty case isn't optional either — it's the thing your loop branches
-     on, and if you don't decide it here you'll discover it as a crash in
-     Milestone 5. -->
 
 ### `search_listings`
 
@@ -73,23 +64,56 @@ FitFindr helps users find secondhand clothes and build outfits. You give it a na
  
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** Regex (`parse_query` in `agent.py`). A price pattern pulls out `max_price` (e.g. "under $30"), a size pattern pulls out `size` (e.g. "size M", "size XXS"), and whatever text is left becomes `description`. It does not call the model, so it costs nothing and gives the same result every time for the same query. The trade-off is that phrasing the patterns have not seen is missed: "nothing over thirty dollars" parses to no price, and the run silently ignores the ceiling.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** `query` → `parsed` (description, size, max_price) → `search_results` → `selected_item` (the first result) → `outfit_suggestion` → `fit_card`. Each tool's result is stored in the session and read back out for the next call. If the search is empty, `error` is set to a message naming what the user could change, and `suggest_outfit` and `create_fit_card` are never called, so `fit_card` stays `None`.
 
 ---
 
 ## Sample Run
 
-<!-- Two things go here.
-
-     1. One FULL query and its output, pasted as text.
-     2. Your three per-tool terminal tests — the command and what it printed. -->
 
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
+
+[1] parse_query
+      in:  vintage graphic tee under $30
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+      →    10 match(es)
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] suggest_outfit
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Here are two outfit suggestions combining the Y2K butterfly baby tee with pieces already in your wardrobe, pla…
+      →    10 wardrobe item(s)
+[5] create_fit_card
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Obsessed with this Y2K butterfly baby tee, which is officially live on my depop for just $18.0! I love styling…
+
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Outfit:   Here are two outfit suggestions combining the Y2K butterfly baby tee with pieces already in your wardrobe, playing into that early 2000s aesthetic:
+
+### 1. The Casual Y2K Streetwear Look
+* **Bottoms:** Baggy straight-leg jeans (dark wash)
+* **Shoes:** Chunky white sneakers
+* **Accessories/Layering:** Black crossbody bag + Vintage black denim jacket (worn off the shoulders or unbuttoned)
+* **Why it works:** The tight silhouette of the baby tee balances the volume of the baggy dark-wash jeans, which is a signature proportion for Y2K style. Throwing on the black denim jacket and chunky sneakers keeps the look grounded in streetwear.
+
+### 2. The Casual Contrast Look
+* **Bottoms:** Wide-leg khaki trousers
+* **Shoes:** Chunky white sneakers
+* **Accessories/Layering:** Brown leather belt + Black crossbody bag
+* **Why it works:** Pairing the ultra-feminine, fitted butterfly tee with structured, earthy wide-leg trousers creates a cool high-low contrast. Accessorizing with the brown belt ties in the earth tones of the khakis while adding a retro touch.
+
+  Fit card: Obsessed with this Y2K butterfly baby tee, which is officially live on my depop for just $18.0! I love styling it with baggy dark-wash denim and chunky sneakers for an effortless street look, or dressing it down with wide-leg khakis for the ultimate 2000s contrast. Grab it before it’s gone! 🦋✨
+
+2 model calls this session, 578 prompt + 326 output tokens
 
 ```
 
@@ -97,11 +121,13 @@ $ python app.py ask '...'
 
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
+
 [{'id': 'lst_002', 'title': 'Y2K Baby Tee — Butterfly Print', 'description': 'Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.', 'category': 'tops', 'style_tags': ['y2k', 'vintage', 'graphic tee', 'cottagecore'], 'size': 'S/M', 'condition': 'excellent', 'price': 18.0, 'colors': ['white', 'pink', 'purple'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_006', 'title': 'Graphic Tee — 2003 Tour Bootleg Style', 'description': 'Vintage-style bootleg tee with faded graphic. Slightly boxy fit. 100% cotton, soft and worn-in.', 'category': 'tops', 'style_tags': ['graphic tee', 'vintage', 'grunge', 'streetwear', 'band tee'], 'size': 'L', 'condition': 'good', 'price': 24.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_017', 'title': 'Mesh Long-Sleeve Top — Black', 'description': 'Sheer black mesh long-sleeve. Great for layering under a graphic tee or over a bralette. Stretchy material, fits true to size.', 'category': 'tops', 'style_tags': ['y2k', 'grunge', 'goth', 'layering'], 'size': 'S/M', 'condition': 'excellent', 'price': 15.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_033', 'title': 'Vintage Band Tee — Faded Grey', 'description': 'Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'band tee', 'graphic tee', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 19.0, 'colors': ['grey', 'charcoal'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_011', 'title': 'Low-Rise Cargo Pants — Khaki', 'description': 'Y2K era low-rise cargo pants. Lots of pockets. Khaki color, slightly distressed at the hems. Great for layering with a long tee.', 'category': 'bottoms', 'style_tags': ['y2k', 'cargo', '2000s', 'streetwear'], 'size': 'W29', 'condition': 'fair', 'price': 27.0, 'colors': ['khaki', 'tan'], 'brand': None, 'platform': 'poshmark'}, {'id': 'lst_015', 'title': 'Vintage Graphic Hoodie — Faded Black', 'description': 'Faded black pullover hoodie with barely-visible vintage graphic on the chest. Cozy interior. Some pilling but adds to the worn-in look.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'graphic', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 26.0, 'colors': ['black', 'charcoal'], 'brand': None, 'platform': 'depop'}]
 ```
 
 ```
 $ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+
 Here are two specific outfit suggestions that incorporate the vintage Levi’s 501s into your existing wardrobe, playing on their classic medium wash and straight-leg silhouette:
 
 ### 1. Off-Duty Minimal (Casual & Everyday)
@@ -121,6 +147,7 @@ Here are two specific outfit suggestions that incorporate the vintage Levi’s 5
 
 ```
 $ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+
 Nothing beats the timeless fit of these vintage Levi's 501s—just pair them with your favorite crisp white sneakers for that effortlessly cool everyday look. Snag this medium wash staple for just $38.0 live on my depop shop right now! 👖✨ #vintage #classic #denim #streetwear
 ```
 
