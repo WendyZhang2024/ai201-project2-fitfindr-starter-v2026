@@ -20,20 +20,7 @@
 
 ---
 
-<!-- ─────────────────────────────────────────────────────────────────────────
-     HOW TO USE THIS FILE
 
-     This is your submission. Fill each section in as you finish the milestone
-     it belongs to — don't leave it all to the end.
-
-     Unit 3 asks for the first five sections. Unit 4 adds the five below them.
-     Leave the unit 4 sections alone until then; they're here so you know
-     what's coming.
-
-     Everything is pasted as TEXT. No screenshots, no images, no video links.
-     A typed block of output gets full credit; a picture of the same output
-     gets none.
-     ───────────────────────────────────────────────────────────────────────── -->
 
 <!-- ═══════════════════════ UNIT 3 — THE BUILD ═══════════════════════ -->
 
@@ -110,41 +97,50 @@ $ python app.py ask '...'
 
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+[{'id': 'lst_002', 'title': 'Y2K Baby Tee — Butterfly Print', 'description': 'Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.', 'category': 'tops', 'style_tags': ['y2k', 'vintage', 'graphic tee', 'cottagecore'], 'size': 'S/M', 'condition': 'excellent', 'price': 18.0, 'colors': ['white', 'pink', 'purple'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_006', 'title': 'Graphic Tee — 2003 Tour Bootleg Style', 'description': 'Vintage-style bootleg tee with faded graphic. Slightly boxy fit. 100% cotton, soft and worn-in.', 'category': 'tops', 'style_tags': ['graphic tee', 'vintage', 'grunge', 'streetwear', 'band tee'], 'size': 'L', 'condition': 'good', 'price': 24.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_017', 'title': 'Mesh Long-Sleeve Top — Black', 'description': 'Sheer black mesh long-sleeve. Great for layering under a graphic tee or over a bralette. Stretchy material, fits true to size.', 'category': 'tops', 'style_tags': ['y2k', 'grunge', 'goth', 'layering'], 'size': 'S/M', 'condition': 'excellent', 'price': 15.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_033', 'title': 'Vintage Band Tee — Faded Grey', 'description': 'Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'band tee', 'graphic tee', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 19.0, 'colors': ['grey', 'charcoal'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_011', 'title': 'Low-Rise Cargo Pants — Khaki', 'description': 'Y2K era low-rise cargo pants. Lots of pockets. Khaki color, slightly distressed at the hems. Great for layering with a long tee.', 'category': 'bottoms', 'style_tags': ['y2k', 'cargo', '2000s', 'streetwear'], 'size': 'W29', 'condition': 'fair', 'price': 27.0, 'colors': ['khaki', 'tan'], 'brand': None, 'platform': 'poshmark'}, {'id': 'lst_015', 'title': 'Vintage Graphic Hoodie — Faded Black', 'description': 'Faded black pullover hoodie with barely-visible vintage graphic on the chest. Cozy interior. Some pilling but adds to the worn-in look.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'graphic', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 26.0, 'colors': ['black', 'charcoal'], 'brand': None, 'platform': 'depop'}]
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+Here are two specific outfit suggestions that incorporate the vintage Levi’s 501s into your existing wardrobe, playing on their classic medium wash and straight-leg silhouette:
 
+### 1. Off-Duty Minimal (Casual & Everyday)
+* **Top:** White ribbed tank top
+* **Outerwear:** Oversized grey crewneck sweatshirt (worn draped over the shoulders or layered on top)
+* **Shoes:** Chunky white sneakers
+* **Accessories:** Black crossbody bag + brown leather belt
+* **Why it works:** Vintage Levi's 501s and a white tank top are a timeless, effortless combination. Tucking the tank into the medium-wash jeans and accenting with the brown leather belt adds a touch of classic polish, while the oversized grey crewneck and chunky white sneakers lean into a comfortable, streetwear-leaning everyday look.
+
+### 2. Vintage Edge (Chunky & Textured)
+* **Top:** Black cropped zip hoodie
+* **Outerwear:** Vintage black denim jacket
+* **Shoes:** Black combat boots
+* **Accessories:** Brown leather belt + black crossbody bag
+* **Why it works:** Pairing the medium-wash 501s with heavy black elements creates a great high-contrast, grungy aesthetic. The cropped zip hoodie balances the relaxed, straight-leg fit of the vintage jeans, and layering the black denim jacket on top adds depth and texture. Grounding the outfit with black combat boots and the brown leather belt ties the vintage-meets-streetwear vibe together seamlessly.
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
-
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+Nothing beats the timeless fit of these vintage Levi's 501s—just pair them with your favorite crisp white sneakers for that effortlessly cool everyday look. Snag this medium wash staple for just $38.0 live on my depop shop right now! 👖✨ #vintage #classic #denim #streetwear
 ```
 
 ---
 
 ## How I Used AI
 
-<!-- Two specific moments. What you asked, what came back, what you changed.
-
-     "I used Claude to help me code" is not enough.
-
-     "I gave Claude my search_listings spec. It returned None on no match
-     instead of an empty list, so I changed it" is the level we want. -->
+<
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked Claude to attack my `criteria.md` acceptance criteria and find logic flaws.
+- *What came back:* It pointed out that my state criterion's reasoning was wrong: I blamed network hiccups, but `selected_item` is an in-memory Python assignment, and network problems only affect the model calls. It also said my own reasoning for criterion 2 (a deterministic branch must be 5/5) contradicted a 4/5 target here.
+- *What I changed:* I raised the state criterion to 5 of 5 and rewrote the reasoning around deterministic variable assignment instead of network instability.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked Claude to review my `tools.py` and find bugs.
+- *What came back:* It found a missing `import re`, and that `.upper` in `_size_tokens` was missing its parentheses, so every search with a size filter would return `[]`.
+- *What I changed:* I added `import re` and changed it to `.upper()`. I then ran the three terminal tests, and the size filter returned the right items (`size='M'` gave only the `S/M` listings).
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
