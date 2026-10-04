@@ -169,6 +169,14 @@ Nothing beats the timeless fit of these vintage Levi's 501s—just pair them wit
 - *What came back:* It found a missing `import re`, and that `.upper` in `_size_tokens` was missing its parentheses, so every search with a size filter would return `[]`.
 - *What I changed:* I added `import re` and changed it to `.upper()`. I then ran the three terminal tests, and the size filter returned the right items (`size='M'` gave only the `S/M` listings).
 
+## Stretch Features Declared
+
+I am building these three stretch features for Unit 3, declared before building them:
+
+1. **A fourth tool (`compare_prices`)** — `tools.py::compare_prices(item, limit=3)`. After an item is selected, it finds cheaper listings in the same category that share at least one style tag with the item. Returns a list of listing dicts, cheapest first, at most `limit` long, or `[]` when nothing cheaper is similar. It does not call the model. The loop stores the result in `session["alternatives"]`.
+2. **A second branch (budget fallback)** — in `agent.py::run_agent`. Condition: `search_listings` returns an empty list **and** the query set a `max_price`. The loop retries the search once without the price ceiling. If that returns listings, it continues to `suggest_outfit` and adds a note to `session["notes"]` that nothing was found within budget. If it is still empty, it takes the original stop branch.
+3. **Style memory (`user_memory.json`)** — `memory.py` saves the style tags of each selected item (the 10 most recent, no duplicates) to `user_memory.json` after a run finishes. On the next run, `run_agent` loads them and passes them to `suggest_outfit`, which adds them to its prompt so the outfit is shaped by what the user previously selected.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
