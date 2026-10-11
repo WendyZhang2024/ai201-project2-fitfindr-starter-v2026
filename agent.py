@@ -253,6 +253,11 @@ def run_agent(query: str, wardrobe: dict, remember_item: bool = False) -> dict:
         session["fit_card"] = create_fit_card(
             session["outfit_suggestion"], session["selected_item"]
         )
+        trace.step(
+            "create_fit_card",
+            inputs=session["selected_item"],
+            returned=session["fit_card"],
+        )
 
         # ── STYLE MEMORY (stretch): remember what the user now owns ───────────
         if remember_item:

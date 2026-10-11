@@ -16,8 +16,9 @@ def search_listings(
 
     Args:
         description: Required. Free-text keywords (e.g. "vintage graphic tee"). Matched against
-            each listing's title, description, category, brand, style tags and colors; a listing
-            must share at least one keyword to be returned.
+            each listing's title, description and style tags; a listing must share at least
+            one keyword to be returned. Common filler words (a, an, and, the, for, with,
+            under, over, in, of) are ignored.
         size: Optional string (e.g. "M"). Matched as a whole size token, so "M" matches "M",
             "S/M" and "M/L" but not "XL". Listings sized "One Size" match any request.
             Omit or pass null to skip size filtering.
@@ -25,9 +26,9 @@ def search_listings(
             $30 or less). Omit or pass null for no price ceiling.
 
     Returns:
-        A list of listing objects, best keyword match first, cheaper first among equal matches.
-        Each has: id, title, description, category, style_tags, size, condition, price, colors,
-        brand (often null), platform.
+        A list of at most 10 listing objects, ordered by number of matching keywords (most
+        first). Ties keep the catalog's original order. Each has: id, title, description,
+        category, style_tags, size, condition, price, colors, brand (often null), platform.
 
         Returns an empty list when nothing matches. It never returns null and never raises;
         an empty list is the normal way this tool says "no results".

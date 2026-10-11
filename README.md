@@ -306,6 +306,9 @@ During the build I changed the design of two of the features. The final versions
       in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
       out: Here are 2 specific outfit suggestions combining the Y2K butterfly baby tee with pieces from your existing war…
       →    10 wardrobe item(s)
+[6] create_fit_card
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Channeling major 2000s off-duty energy today by styling this butterfly baby tee with baggy dark wash denim and…
 ```
 
 **Empty search**
@@ -326,7 +329,11 @@ During the build I changed the design of two of the features. The final versions
       →    search returned []: stopping before suggest_outfit
 ```
 
-**On the MCP move:** "I moved `search_listings` to MCP. The direct call is replaced by `mcp_client.call_tool` inside a helper function `_search()`. I also wrote a published contract in `mcp_server.py`. No breaking changes occurred; the normal query still works perfectly."
+**On the MCP move:** I registered `search_listings` as the only tool in `mcp_server.py`. It wraps the existing implementation in `tools.py`, imported under the alias `_search_listings_impl` so the registered function doesn't call itself. In `agent.py`, the direct call `search_listings(description, size, max_price)` was replaced with `mcp_client.call_tool("search_listings", {...})`, inside a small helper `_search()` that both the main search and the size-relaxed retry use. I removed the earlier silent fallback to the direct call, so a broken MCP connection shows up as an error instead of being hidden.
+
+`python mcp_client.py` lists `search_listings` with its description and inputs (`description: string`, `size: string, optional`, `max_price: number, optional`), matching the Tool Inventory. Behaviour did not change after the move: for `vintage graphic tee under $30` the search still returns 10 matches, with the same top three titles and the same selected item (`Y2K Baby Tee — Butterfly Print`) as before. The call changed shape; what it returns did not.
+
+Writing the contract showed me what the tool really does, and two lines I first wrote were wrong. Matching uses only title, description and style tags (not category, brand or colors), and results are ordered by number of matching keywords only, not by price. Matching is also loose: a listing needs just one shared keyword, so `graphic tee` returns `Mesh Long-Sleeve Top — Black` because its description mentions "graphic tee". I corrected the docstring in `mcp_server.py` to say what the code does.
 
 
 ---
