@@ -17,7 +17,8 @@ import re
 import config
 import memory
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card, compare_prices
+from mcp_client import call_tool  # UNIT 4, MILESTONE 1: search_listings now goes through MCP
+from tools import suggest_outfit, create_fit_card, compare_prices
 from generate import ModelUnavailable
 
 
@@ -98,30 +99,24 @@ def parse_query(query: str) -> dict:
 
 def _search(parsed: dict) -> list[dict]:
     """
-    Call search_listings — over MCP when the server has it registered.
+    Call search_listings over MCP.
 
-    ⚠️ UNIT 4, MILESTONE 1. In unit 3 this function does not exist and
-    `run_agent` calls `search_listings(...)` directly. The fallback is not
-    belt-and-braces for its own sake: `python agent.py` has to keep working
-    while the MCP side is half-built, and a student whose 40 minutes ran out
-    still needs the rest of the week to run.
+    UNIT 4, MILESTONE 1.
+    # was: results = search_listings(parsed["description"], parsed["size"], parsed["max_price"])
+    The direct call is gone: the tool now lives in mcp_server.py and is reached
+    through mcp_client.call_tool. There is deliberately no silent fallback here —
+    if MCP breaks, you want to see the error, not have a direct call hide it.
+    (If you get stuck for 40 minutes, swap the old direct call back in and
+    document where it broke in your README.)
+
+    It is a helper only because the second-branch retry needs the same call.
     """
-    try:
-        from mcp_client import call_tool
-
-        results = call_tool(
-            "search_listings",
-            {
-                "description": parsed["description"],
-                "size": parsed["size"],
-                "max_price": parsed["max_price"],
-            },
-        )
-        return results or []
-    except Exception:  # noqa: BLE001 — MCP unavailable is not a user-facing error
-        return search_listings(
-            parsed["description"], parsed["size"], parsed["max_price"]
-        )
+    results = call_tool("search_listings", {
+        "description": parsed["description"],
+        "size": parsed["size"],
+        "max_price": parsed["max_price"],
+    })
+    return results
 
 
 def run_agent(query: str, wardrobe: dict, remember_item: bool = False) -> dict:
@@ -179,14 +174,14 @@ def run_agent(query: str, wardrobe: dict, remember_item: bool = False) -> dict:
         trace.check_iterations(steps)
         parsed = parse_query(query)
         session["parsed"] = parsed
-        trace.step("parse_query", inputs=query, returned=parsed)
+        trace.step("parse_query", inputs=query, returned=str(parsed))
 
         steps += 1
         trace.check_iterations(steps)
         results = _search(parsed)
         trace.step(
             "search_listings (via MCP)",
-            inputs=parsed,
+            inputs=str(parsed),
             returned=results,
             note=f"{len(results)} match(es)",
         )
@@ -201,7 +196,7 @@ def run_agent(query: str, wardrobe: dict, remember_item: bool = False) -> dict:
             results = _search(relaxed)
             trace.step(
                 "branch",
-                inputs=relaxed,
+                inputs=str(relaxed),
                 returned=results,
                 note=(
                     f"search empty with size {parsed['size']}: retried without size, "
@@ -257,11 +252,6 @@ def run_agent(query: str, wardrobe: dict, remember_item: bool = False) -> dict:
         trace.check_iterations(steps)
         session["fit_card"] = create_fit_card(
             session["outfit_suggestion"], session["selected_item"]
-        )
-        trace.step(
-            "create_fit_card",
-            inputs=session["selected_item"],
-            returned=session["fit_card"],
         )
 
         # ── STYLE MEMORY (stretch): remember what the user now owns ───────────
@@ -350,7 +340,7 @@ if __name__ == "__main__":
 
     print("\n=== Second branch: the size rules everything out, so it is relaxed ===")
     _show(run_agent(
-            query="graphic tee size XXS",
+        query="graphic tee size XXS",
         wardrobe=get_example_wardrobe(),
     ))
 
@@ -358,4 +348,3 @@ if __name__ == "__main__":
         "\nThe second one should stop before the fit card. If both paths look "
         "the same,\nthe branch isn't doing anything yet."
     )
-    

@@ -207,7 +207,7 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     if not outfit or not outfit.strip():
         return "No outfit suggestions available to create a fit card."
 
-    prompt = f"Write a 2-4 sentence social media caption for this secondhand item.\n\nItem details:\n- Title: {new_item['title']}\n- Price: ${new_item['price']}\n- Platform: {new_item['platform']}\n- Tags: {', '.join(new_item['style_tags'])}\n\nOutfit suggestion:\n{outfit}\n\nRequirements: Write it like a real outfit share, and you must mention the price ({new_item['price']}) and platform ({new_item['platform']}) once each."
+    prompt = f"Write a 2-4 sentence social media caption for this secondhand item.\n\nItem details:\n- Title: {new_item['title']}\n- Price: ${new_item['price']}\n- Platform: {new_item['platform']}\n- Tags: {', '.join(new_item['style_tags'])}\n\nOutfit suggestion:\n{outfit}\n\nRequirements: Write it like a real outfit share, and you must mention the price ({new_item['price']}) and platform ({new_item['platform']}) once each. **Rule: Do NOT use any emojis in the caption. Keep it plain text.**"
 
     return generate(prompt)
 

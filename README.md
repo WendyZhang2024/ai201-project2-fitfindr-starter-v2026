@@ -237,61 +237,40 @@ During the build I changed the design of two of the features. The final versions
 
 ## Run Log — Before
 
-<!-- Five criteria, five tries each, in this exact format.
-
-     Five, because your criteria are written out of five. Mark each try PASS
-     or FAIL, count the passes, and read that count against your target — a
-     row targeting 4 of 5 with three PASS cells is MISSED (3/5).
-
-     `python run_eval.py --label before` runs everything and writes the table
-     into results/. Paste it here and fill in the verdicts. -->
-
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops early | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Session state saves correctly | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. MCP call returns correct results | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Fit card generates without errors | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Real output from one try**, pasted as text, naming the file and function
-that produced it:
+**Real output from one try**, produced by `agent.py::run_agent` (the `trace.step` calls) for the query `looking for a vintage graphic tee under $30`:
 
 ```
-
+[2] search_listings (via MCP)
+      in:  {'description': 'looking for a vintage graphic tee', 'size': None, 'max_price': 30.0}
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+      →    10 match(es)
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
 ```
 
 ---
 
 ## Verdicts and Diagnoses
 
-<!-- MET or MISSED per criterion against LAST UNIT's target, plus a sentence on
-     how you decided.
-
-     Then, for every miss: which of the four places it happened — a tool, the
-     loop's branch, the session, or the model's output — AND the mechanism.
-
-     Not a diagnosis:  "The fit card was bad."
-     A diagnosis:      "The fit card criterion missed on 2 of 5 items. Both had
-                        an empty brand field. My prompt puts the brand in the
-                        first sentence, so the card opened with a blank and read
-                        like a fragment. The tool worked; the prompt assumed a
-                        field that isn't always there."
-
-     Look for a pattern. Three misses on the same tool is one problem, not
-     three. -->
-
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | Matching query completes | 5/5 | MET | 5/5 runs selected an item and generated an outfit and a fit card. |
+| 2 | Impossible query stops early | 5/5 | MET | 5/5 runs stopped before calling `suggest_outfit`, and `fit_card` stayed `None`. |
+| 3 | Session state saves correctly | 5/5 | MET | The trace shows `parsed`, `search_results` and `selected_item` flowing from one step to the next. |
+| 4 | MCP call returns correct results | 5/5 | MET | `[2] search_listings (via MCP)` returned the same 10 items every time. |
+| 5 | Fit card generates without errors | 5/5 | MET | All 5 fit cards were generated with content. |
 
 **Diagnoses**
 
-
+"All 5 criteria were MET, so there are no misses to diagnose. However, my target for criterion 5 (Fit Card Quality) was set too low. I only required the card to exist. A tighter target would be: 'The fit card must mention the exact price and platform.' I set it low initially because I wasn't sure if the model would consistently include details, but it did in all 5 tries, so the target should be raised."
 
 ---
 
@@ -310,20 +289,44 @@ that produced it:
 **Happy path**
 
 ```
-
+[1] parse_query
+      in:  vintage graphic tee under $30
+      out: {'description': 'vintage graphic tee', 'size': None, 'max_price': 30.0}
+[2] search_listings (via MCP)
+      in:  {'description': 'vintage graphic tee', 'size': None, 'max_price': 30.0}
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+      →    10 match(es)
+[3] select_item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] compare_prices
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: 3 items: Mesh Long-Sleeve Top — Black, Henley Long Sleeve — Washed Burgundy, Tie-Dye Long Sleeve — Pastel
+      →    3 cheaper alternative(s)
+[5] suggest_outfit
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Here are 2 specific outfit suggestions combining the Y2K butterfly baby tee with pieces from your existing war…
+      →    10 wardrobe item(s)
 ```
 
 **Empty search**
 
 ```
-
+[1] parse_query
+      in:  designer ballgown size XXS under $5
+      out: {'description': 'designer ballgown', 'size': 'XXS', 'max_price': 5.0}
+[2] search_listings (via MCP)
+      in:  {'description': 'designer ballgown', 'size': 'XXS', 'max_price': 5.0}
+      out: [] (empty)
+      →    0 match(es)
+[3] branch
+      in:  {'description': 'designer ballgown', 'size': None, 'max_price': 5.0}
+      out: [] (empty)
+      →    search empty with size XXS: retried without size, 0 match(es)
+[4] branch
+      →    search returned []: stopping before suggest_outfit
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
-behaved differently afterwards. If the rewire didn't work, say exactly where it
-broke — the error text and the last thing that worked. That earns the point in
-full. -->
-
+**On the MCP move:** "I moved `search_listings` to MCP. The direct call is replaced by `mcp_client.call_tool` inside a helper function `_search()`. I also wrote a published contract in `mcp_server.py`. No breaking changes occurred; the normal query still works perfectly."
 
 
 ---
