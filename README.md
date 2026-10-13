@@ -358,29 +358,23 @@ Writing the contract showed me what the tool really does, and two lines I first 
 
 ## The Improvement
 
-<!-- What you changed, why your diagnosis pointed at it, and the after-run in
-     the same table format. One change, measured properly.
+**What I changed:** one change, in `generate.py::generate`. The retry loop used to retry only rate limiting (429); every other error, including `503 UNAVAILABLE` and `500 INTERNAL`, was raised immediately as `ModelUnavailable`. It now also treats those transient server errors (messages containing "503", "unavailable", "500" or "internal") as retryable, with the existing backoff (1, 2, 4, 8, 16 seconds, five attempts). If the retries run out on a transient error it still raises `ModelUnavailable`, so the readable message from Milestone 2 is unchanged. I also replaced a fragile `"rate" in str(error)` check with a `last_was_rate_limited` flag. Nothing else changed: the scenarios, the criteria, `agent.py` and the tools are the same as in the before run.
 
-     `python run_eval.py --label after` -->
-
-**What I changed:**
-
-**Which failure it was meant to fix:**
+**Which failure it was meant to fix:** the diagnosis for criteria 1 and 4: the three tries that ended on a `503` at `[5]`/`[6] model unavailable` because `generate()` gave up on the first non-429 error. The same cause also stopped three of five empty-wardrobe tries and one of five state tries in the before run.
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. State: each run keeps its own selected item | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. The fit card keeps the facts and is not a copy | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. An empty wardrobe still gets styling advice | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Did it help, and how do I know:**
+(Produced by `python run_eval.py --label after`, results in `results/run_2026-10-14_0255_after.md`. Criterion 4 is scored on the five fit cards of the matching-query scenario: all five contain "18" and "depop" and no two are identical. Criterion 5: `suggest_outfit` returned 3,100+ characters in every try with none of "please add", "no items", "error".)
 
-<!-- If it made things worse, say that. Honestly reported, that earns full
-     credit and is more interesting than one that worked. -->
+**Did it help, and how do I know:** yes. In the before run the model call ended a run early in 7 of the 15 tries that use the model (3 of 5 matching, 3 of 5 empty wardrobe, 1 of 5 state), and criteria 1 and 4 were MISSED at 2/5. In the after run none of the 15 stopped early, and criteria 1 and 4 went to 5/5. The retry lines in the terminal show that the service was still pushing back: 10 of the 15 model tries hit at least one server error (`[retry] service pushed back (server error)`), the worst needing four retries (1 + 2 + 4 + 8 seconds) before it succeeded. Before the change each of those would have ended the run. Limits of this evidence: it is one run of five tries per scenario, and the service may also have been less busy than during the before run. The retries cover about 31 seconds in total, so a longer outage would still stop the agent, with the readable message.
 
 
 
