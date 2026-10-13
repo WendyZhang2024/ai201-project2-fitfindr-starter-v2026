@@ -239,11 +239,11 @@ During the build I changed the design of two of the features. The final versions
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1. A matching query completes all three tools | 4/5 |  |  |  |  |  |  |
-| 2. An impossible query stops before the second tool | 5/5 |  |  |  |  |  |  |
-| 3. State: each run keeps its own selected item | 5/5 |  |  |  |  |  |  |
-| 4. The fit card keeps the facts and is not a copy | 4/5 |  |  |  |  |  |  |
-| 5. An empty wardrobe still gets styling advice | 4/5 |  |  |  |  |  |  |
+| 1. A matching query completes all three tools | 4 of 5 | FAIL | PASS | PASS | FAIL | FAIL | MISSED (2/5) |
+| 2. An impossible query stops before the second tool | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. State: each run keeps its own selected item | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. The fit card keeps the facts and is not a copy | 4 of 5 | FAIL | PASS | PASS | FAIL | FAIL | MISSED (2/5) |
+| 5. An empty wardrobe still gets styling advice | 4 of 5 | FAIL | PASS | PASS | PASS | PASS | MET (4/5) |
 
 **Real output from one try**, produced by `agent.py::run_agent` (the `trace.step` calls) for the query `looking for a vintage graphic tee under $30`:
 
@@ -262,15 +262,15 @@ During the build I changed the design of two of the features. The final versions
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 | A matching query completes all three tools | 4/5 |  |  |
-| 2 | An impossible query stops before the second tool | 5/5 |  |  |
-| 3 | State: each run keeps its own selected item | 5/5 |  |  |
-| 4 | The fit card keeps the facts and is not a copy | 4/5 |  |  |
-| 5 | An empty wardrobe still gets styling advice | 4/5 |  |  |
+| 1 | A matching query completes all three tools | 4 of 5 | MISSED | Only tries 2 and 3 ended with a fit card (2/5). Tries 1, 4 and 5 stopped at `[6]/[5] model unavailable` with a 503. |
+| 2 | An impossible query stops before the second tool | 5 of 5 | MET | All 5 tries ended at `[4] branch` with `selected_item` none and no outfit or fit card. |
+| 3 | State: each run keeps its own selected item | 5 of 5 | MET | Pairing try N of `matching query` with try N of `state`: in all 5 pairs `selected_item` was the first search result of its own run (Y2K Baby Tee vs Denim Jacket). This held even in try 2, where the run stopped later on a 503. |
+| 4 | The fit card keeps the facts and is not a copy | 4 of 5 | MISSED | Scored on the 5 fit cards of the matching-query scenario. Tries 2 and 3 contain "18.0" and "depop"/"Depop" and differ from each other; tries 1, 4 and 5 produced no fit card (2/5). |
+| 5 | An empty wardrobe still gets styling advice | 4 of 5 | MET | `suggest_outfit` returned 3,300+ characters with none of "please add", "no items", "error" in tries 2–5 (4/5). Try 1 failed at `suggest_outfit` with a 503. |
 
 **Diagnoses**
 
-_To be filled in after `python run_eval.py --label before` is re-run with the updated `scenarios.py`._
+**Criterion 1 (MISSED, 2/5) and Criterion 4 (MISSED, 2/5) are one problem.** Tries 1, 4 and 5 of the matching-query scenario ended on a `503 UNAVAILABLE` from the model service. In tries 1 and 4 `suggest_outfit` had succeeded and the failure was in `create_fit_card` (`[6] model unavailable`, no fit card); in try 5 it was `suggest_outfit` itself. Criterion 4 missed on the same three tries because no fit card existed to score. Where: the model call inside `tools.py::suggest_outfit` / `create_fit_card`, which goes through `generate.py::generate`. Mechanism: `generate()` only retries on rate limiting (429); any other error, including 503 and 500, is raised immediately as `ModelUnavailable` (`generate.py`, the `if not rate_limited: raise ModelUnavailable(...)` branch), and `agent.py::run_agent` catches it and stops. A spike in demand that "usually lasts a few seconds" therefore ends the run on the first attempt. The tools and the loop behaved correctly; the missing retry for transient server errors is the cause. The same thing hit the empty-wardrobe scenario (a 503 in try 1 and a `500 INTERNAL` in try 3).
 
 ---
 
