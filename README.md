@@ -1,5 +1,5 @@
 # FitFindr
-<!-- test commit -->
+
 > ### 👋 Start here
 >
 > **New to this repo? Read [RUNNING.md](RUNNING.md) first** — setup, every
@@ -155,8 +155,6 @@ Nothing beats the timeless fit of these vintage Levi's 501s—just pair them wit
 
 ## How I Used AI
 
-
-
 **Moment 1**
 
 - *What I asked for:* I asked Claude to attack my `criteria.md` acceptance criteria and find logic flaws.
@@ -168,6 +166,18 @@ Nothing beats the timeless fit of these vintage Levi's 501s—just pair them wit
 - *What I asked for:* I asked Claude to review my `tools.py` and find bugs.
 - *What came back:* It found a missing `import re`, and that `.upper` in `_size_tokens` was missing its parentheses, so every search with a size filter would return `[]`.
 - *What I changed:* I added `import re` and changed it to `.upper()`. I then ran the three terminal tests, and the size filter returned the right items (`size='M'` gave only the `S/M` listings).
+
+**Moment 3**
+
+- *What I asked for:* I wrote the `search_listings` description in `mcp_server.py` myself, then asked Claude to read it against `tools.py` and tell me whether it described what the code really does. (I used DeepSeek only to translate the milestone instructions into plain English.)
+- *What came back:* Claude found two lines in my description that were wrong. I had written that matching covers category, brand and colors, but `tools.py` only matches title, description and style tags. I had also written "cheaper first among equal matches", but the code sorts by keyword overlap only and leaves ties in file order. It also pointed out that the result is capped at `config.SEARCH_RESULT_LIMIT`, which I had not mentioned.
+- *What I changed:* I corrected the docstring in `mcp_server.py` and added the cap. I also removed a silent fallback to the direct call in `agent.py`, so a broken MCP connection shows up as an error instead of being hidden.
+
+**Moment 4**
+
+- *What I asked for:* I asked Claude to check my first run-log table and verdicts against `criteria.md` and the results file, and to review the retry code I planned to add.
+- *What came back:* My table had only four rows, my "empty wardrobe" row was really criterion 5 with the wrong target, and I had marked criterion 3 as MISSED because of a 503, even though `selected_item` was set correctly in all five pairs. Claude also showed that `generate.py` retried only rate limits (429) and raised 503/500 immediately, which was the real cause of the misses. My snippet had two flaws: a second retry loop duplicating the one already in `generate.py`, and `raise e`, which would have crashed the agent because `agent.py` only catches `ModelUnavailable`.
+- *What I changed:* I rewrote the table with five rows and the targets from `criteria.md` (criteria 1 and 4 MISSED at 2/5, the rest MET), rewrote the diagnosis around `generate.py`, and extended the existing retry loop to cover 503/500 instead of adding a new one. The after run (`python run_eval.py --label after`) reached 5/5 on all five criteria; 10 of the 15 model tries needed at least one retry.
 
 ## Stretch Features
 
@@ -245,15 +255,35 @@ During the build I changed the design of two of the features. The final versions
 | 4. The fit card keeps the facts and is not a copy | 4 of 5 | FAIL | PASS | PASS | FAIL | FAIL | MISSED (2/5) |
 | 5. An empty wardrobe still gets styling advice | 4 of 5 | FAIL | PASS | PASS | PASS | PASS | MET (4/5) |
 
-**Real output from one try**, produced by `agent.py::run_agent` (the `trace.step` calls) for the query `looking for a vintage graphic tee under $30`:
+**Real output from one try:** criterion 1, Try 1 of `results/run_2026-10-14_0122_before.md` (query `vintage graphic tee under $30`). The trace is printed by `trace.step()` calls in `agent.py::run_agent`; the 503 is raised in `generate.py::generate` and caught in `agent.py::run_agent`.
 
 ```
+[1] parse_query
+      in:  vintage graphic tee under $30
+      out: {'description': 'vintage graphic tee', 'size': None, 'max_price': 30.0}
 [2] search_listings (via MCP)
-      in:  {'description': 'looking for a vintage graphic tee', 'size': None, 'max_price': 30.0}
+      in:  {'description': 'vintage graphic tee', 'size': None, 'max_price': 30.0}
       out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
       →    10 match(es)
 [3] select_item
       out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] compare_prices
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: 3 items: Mesh Long-Sleeve Top — Black, Henley Long Sleeve — Washed Burgundy, Tie-Dye Long Sleeve — Pastel
+      →    3 cheaper alternative(s)
+[5] suggest_outfit
+      in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
+      out: Here are 2 specific outfit suggestions combining the Y2K butterfly baby tee with pieces from your current ward…
+      →    10 wardrobe item(s)
+[6] model unavailable
+      →    stopping, search results kept
+```
+
+`session["error"]` for that try:
+
+```
+The model couldn't be reached, so the outfit and caption steps didn't run. The search worked — 10 listing(s) were found. The model service may be busy. Wait a minute and run the same query again.
+What the service said: Couldn't reach the model: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
 ```
 
 ---
@@ -276,15 +306,6 @@ During the build I changed the design of two of the features. The final versions
 
 ## Loop Trace
 
-<!-- One full run, printed step by step, with the MCP call visible in it.
-
-     `python app.py ask '...' --trace` once you've added the trace.step()
-     calls in Milestone 2.
-
-     Worth pasting BOTH the happy path and the empty-search path. The empty
-     one should be visibly shorter, because it stops. If your two traces are
-     the same length, your branch isn't working — and this is the fastest way
-     anyone will ever find that out. -->
 
 **Happy path**
 
@@ -382,9 +403,15 @@ Writing the contract showed me what the tool really does, and two lines I first 
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
+No criterion was missed in the after run (all five at 5/5), so nothing below is a failed target. These are the weaknesses I can show evidence for that the criteria do not catch.
+
+**1. The targets were too loose.** Criteria 1, 4 and 5 were set at 4 of 5 to leave room for model failures. After the retry fix all three reached 5/5, so the targets did not constrain the agent. I would tighten criteria 1, 4 and 5 to 5 of 5. I did not change them: a target is only revised when it could not be measured, and this one could.
+
+**2. A long model outage still stops the agent.** The retries cover about 31 seconds in total (1 + 2 + 4 + 8 + 16 s). A longer outage ends the run with the readable "model couldn't be reached" message, but no outfit or fit card. If I had more time I would return the search results and the cheaper alternatives together with that message, so the user still gets something. I stopped because the retry fixes the failure I observed, and "partial output when the model is down" needs its own criterion that this unit did not set.
+
+**3. The query parser misreads some phrasings.** `parse_query` in `agent.py` is a regex. "nothing over thirty dollars" gives no price ceiling and is silently ignored, and `jacket over $30` is parsed as a ceiling of $30, which is the opposite of what the user asked. I would detect "over" / "more than" and either reject the query with a message or support a minimum price. I stopped because changing the parser would have changed the inputs between the before and after runs.
+
+**4. Search matching is loose.** A listing only needs one shared keyword, so `graphic tee` returns `Mesh Long-Sleeve Top — Black` (its description mentions "graphic tee"), and `compare_prices` suggests long-sleeve tops as "cheaper alternatives" to a baby tee. I would weight title and style-tag matches above description matches and require a minimum score. I stopped because no criterion measures relevance, so I could not have shown it helped.
 
 
 
