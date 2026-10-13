@@ -304,12 +304,14 @@ _To be filled in after `python run_eval.py --label before` is re-run with the up
       →    3 cheaper alternative(s)
 [5] suggest_outfit
       in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
-      out: Here are 2 specific outfit suggestions combining the Y2K butterfly baby tee with pieces from your existing war…
+      out: Here are two outfit suggestions combining the Y2K butterfly baby tee with pieces already in your wardrobe, pla…
       →    10 wardrobe item(s)
 [6] create_fit_card
       in:  Y2K Baby Tee — Butterfly Print ($18.0, depop)
       out: Channeling major 2000s off-duty energy today by styling this butterfly baby tee with baggy dark wash denim and…
 ```
+
+(Produced by `python app.py ask 'vintage graphic tee under $30' --trace`; the `trace.step()` calls are in `agent.py::run_agent`.)
 
 **Empty search**
 
@@ -328,6 +330,22 @@ _To be filled in after `python run_eval.py --label before` is re-run with the up
 [4] branch
       →    search returned []: stopping before suggest_outfit
 ```
+
+**The three failure modes, triggered one at a time**
+
+1. **Empty search** — `python app.py ask 'designer ballgown size XXS under $5'` (trace above). The loop retried without the size, found nothing, stopped before `suggest_outfit`, and said:
+
+   > Nothing in the listings matched description 'designer ballgown', size XXS, under $5.
+   > Things to change: try broader words — 'jacket' finds more than 'cropped corduroy jacket'; drop the size, or try a neighbouring one; raise the price ceiling above $5.
+
+2. **Empty wardrobe** — `python app.py ask 'denim jacket under $50' --empty-wardrobe`. `suggest_outfit` received 0 wardrobe items and returned general styling advice instead of crashing or returning an empty string (it opens "Since this is your very first piece of clothing…"); `create_fit_card` still ran.
+
+3. **Model unavailable** — I changed one character of `GEMINI_API_KEY` in `.env` and ran a query I had not asked before (`python app.py ask 'red wool coat under $60'`). The search and `compare_prices` ran, then the loop stopped at `[5] model unavailable` with no stack trace:
+
+   > The model couldn't be reached, so the outfit and caption steps didn't run. The search worked — 2 listing(s) were found. Check GEMINI_API_KEY in your .env, then run the same query again.
+   > What the service said: The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.google.com.
+
+   Handling it showed me a flaw: the first version of this message always told the user to check their key. During this unit the model returned a real `503 UNAVAILABLE` (service overloaded) when running `test.py`, and for that the key advice would be wrong. `agent.py` now picks the advice from the cause: a rejected key says to check `.env`; anything else says the service may be busy and to retry in a minute.
 
 **On the MCP move:** I registered `search_listings` as the only tool in `mcp_server.py`. It wraps the existing implementation in `tools.py`, imported under the alias `_search_listings_impl` so the registered function doesn't call itself. In `agent.py`, the direct call `search_listings(description, size, max_price)` was replaced with `mcp_client.call_tool("search_listings", {...})`, inside a small helper `_search()` that both the main search and the size-relaxed retry use. I removed the earlier silent fallback to the direct call, so a broken MCP connection shows up as an error instead of being hidden.
 

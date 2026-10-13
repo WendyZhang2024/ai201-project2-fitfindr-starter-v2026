@@ -268,12 +268,21 @@ def run_agent(query: str, wardrobe: dict, remember_item: bool = False) -> dict:
             trace.step("style memory", note="selected item saved for the next run")
 
     except ModelUnavailable as exc:
+        # Say what the user can actually do. A rejected key is theirs to fix; an
+        # overloaded service (503) is not, and telling them to check the key
+        # would send them looking in the wrong place.
+        if "api key" in str(exc).lower():
+            advice = "Check GEMINI_API_KEY in your .env, then run the same query again."
+        else:
+            advice = (
+                "The model service may be busy. Wait a minute and run the same "
+                "query again."
+            )
         session["error"] = (
             f"The model couldn't be reached, so the outfit and caption steps "
             f"didn't run. The search worked — "
             f"{len(session['search_results'])} listing(s) were found. "
-            f"Check GEMINI_API_KEY in your .env, then run the same query "
-            f"again.\nWhat the service said: {exc}"
+            f"{advice}\nWhat the service said: {exc}"
         )
         trace.step("model unavailable", note="stopping, search results kept")
 
