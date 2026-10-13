@@ -239,11 +239,11 @@ During the build I changed the design of two of the features. The final versions
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1. Matching query completes | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
-| 2. Impossible query stops early | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
-| 3. Session state saves correctly | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
-| 4. MCP call returns correct results | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
-| 5. Fit card generates without errors | 5/5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 1. A matching query completes all three tools | 4/5 |  |  |  |  |  |  |
+| 2. An impossible query stops before the second tool | 5/5 |  |  |  |  |  |  |
+| 3. State: each run keeps its own selected item | 5/5 |  |  |  |  |  |  |
+| 4. The fit card keeps the facts and is not a copy | 4/5 |  |  |  |  |  |  |
+| 5. An empty wardrobe still gets styling advice | 4/5 |  |  |  |  |  |  |
 
 **Real output from one try**, produced by `agent.py::run_agent` (the `trace.step` calls) for the query `looking for a vintage graphic tee under $30`:
 
@@ -262,15 +262,15 @@ During the build I changed the design of two of the features. The final versions
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 | Matching query completes | 5/5 | MET | 5/5 runs selected an item and generated an outfit and a fit card. |
-| 2 | Impossible query stops early | 5/5 | MET | 5/5 runs stopped before calling `suggest_outfit`, and `fit_card` stayed `None`. |
-| 3 | Session state saves correctly | 5/5 | MET | The trace shows `parsed`, `search_results` and `selected_item` flowing from one step to the next. |
-| 4 | MCP call returns correct results | 5/5 | MET | `[2] search_listings (via MCP)` returned the same 10 items every time. |
-| 5 | Fit card generates without errors | 5/5 | MET | All 5 fit cards were generated with content. |
+| 1 | A matching query completes all three tools | 4/5 |  |  |
+| 2 | An impossible query stops before the second tool | 5/5 |  |  |
+| 3 | State: each run keeps its own selected item | 5/5 |  |  |
+| 4 | The fit card keeps the facts and is not a copy | 4/5 |  |  |
+| 5 | An empty wardrobe still gets styling advice | 4/5 |  |  |
 
 **Diagnoses**
 
-"All 5 criteria were MET, so there are no misses to diagnose. However, my target for criterion 5 (Fit Card Quality) was set too low. I only required the card to exist. A tighter target would be: 'The fit card must mention the exact price and platform.' I set it low initially because I wasn't sure if the model would consistently include details, but it did in all 5 tries, so the target should be raised."
+_To be filled in after `python run_eval.py --label before` is re-run with the updated `scenarios.py`._
 
 ---
 
