@@ -296,6 +296,7 @@ def generate(
     _check_budget()
 
     last_error: Exception | None = None
+    last_was_rate_limited = False
     for attempt in range(config.MAX_RETRIES):
         _wait_for_slot()
         try:
@@ -328,18 +329,26 @@ def generate(
                 or "resource" in message and "exhaust" in message
                 or "rate" in message and "limit" in message
             )
-            if not rate_limited:
+            last_was_rate_limited = rate_limited
+
+            transient = (
+                "503" in message or "unavailable" in message
+                or "500" in message or "internal" in message
+            )
+            if not (rate_limited or transient):
                 raise ModelUnavailable(_explain(exc)) from exc
             backoff = _retry_delay(exc, attempt)
             print(
-                f"  [rate limit] service pushed back. Waiting {backoff:.0f}s "
-                f"(attempt {attempt + 1} of {config.MAX_RETRIES}). This is "
-                f"the limiter doing its job, not a bug.",
+                f"  [retry] service pushed back ({'rate limit' if rate_limited else 'server error'}). "
+                f"Waiting {backoff:.0f}s (attempt {attempt + 1} of {config.MAX_RETRIES}).",
                 file=sys.stderr,
                 flush=True,
             )
             time.sleep(backoff)
 
+
+    if last_error is not None and not last_was_rate_limited:
+        raise ModelUnavailable(_explain(last_error)) from last_error
     raise RuntimeError(
         f"Still rate limited after {config.MAX_RETRIES} attempts. Wait a "
         f"minute and try again — your key is fine.\nLast error: {last_error}"
